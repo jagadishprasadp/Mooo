@@ -19,6 +19,17 @@ def connection() -> sqlite3.Connection:
         )
         """
     )
+    database.execute(
+        """
+        create table if not exists replies (
+            id integer primary key autoincrement,
+            note_id integer not null,
+            body text not null,
+            created_at text not null,
+            foreign key (note_id) references notes (id)
+        )
+        """
+    )
     database.commit()
     return database
 
@@ -43,5 +54,25 @@ def list_notes() -> list[dict]:
 
 def delete_note(note_id: int) -> None:
     with connection() as database:
+        database.execute("delete from replies where note_id = ?", (note_id,))
         database.execute("delete from notes where id = ?", (note_id,))
         database.commit()
+
+
+def save_reply(note_id: int, body: str) -> int:
+    with connection() as database:
+        cursor = database.execute(
+            "insert into replies (note_id, body, created_at) values (?, ?, ?)",
+            (note_id, body, datetime.now(timezone.utc).isoformat()),
+        )
+        database.commit()
+        return int(cursor.lastrowid)
+
+
+def list_replies(note_id: int) -> list[dict]:
+    with connection() as database:
+        rows = database.execute(
+            "select id, note_id, body, created_at from replies where note_id = ? order by id desc",
+            (note_id,),
+        ).fetchall()
+    return [dict(row) for row in rows]

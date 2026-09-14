@@ -1,8 +1,9 @@
+from storage import delete_note, delete_reply, list_media, list_memories, list_notes, list_replies, save_media, save_memory, save_note, save_reply
 import base64
 from html import escape
 
 import streamlit as st
-from storage import delete_note, delete_reply, list_media, list_memories, list_notes, list_replies, save_media, save_memory, save_note, save_reply
+from storage import delete_memory, delete_note, delete_reply, list_media, list_memories, list_notes, list_replies, save_media, save_memory, save_note, save_reply
 
 PARTNER_NAME = " My Mooo"
 
@@ -36,6 +37,8 @@ st.markdown(
     .memories-button button:hover { border:0; background:#b9273a; color:#fff; transform:scale(1.05); }
     .memory-grid img { border-radius:16px; }
     .memory-title { color:var(--rose); font-family:Georgia,serif; font-size:2.4rem; text-align:center; margin:1rem 0 2rem; }
+    .memory-uploader [data-testid="stFileUploaderDropzoneInstructions"] { display:none; }
+    .memory-uploader [data-testid="stFileUploaderDropzone"] { padding:.55rem; background:transparent; border:0; }
     .letter,.feed-item { background:rgba(255,255,255,.74); border:1px solid var(--line); border-radius:20px; padding:1.1rem; box-shadow:0 12px 35px rgba(111,54,47,.06); }
     .letter-line { color:var(--muted); font-size:.8rem; margin-bottom:1rem; }.letter-body,.feed-body { white-space:pre-wrap; font-family:Georgia,serif; line-height:1.55; }
     .note-signature { color:var(--rose); font-family:Georgia,serif; font-size:.95rem; font-style:italic; text-align:right; margin-top:1rem; }
@@ -71,6 +74,8 @@ if "love_blast_source" not in st.session_state:
     st.session_state.love_blast_source = None
 if "show_memories" not in st.session_state:
     st.session_state.show_memories = False
+if "memory_upload_version" not in st.session_state:
+    st.session_state.memory_upload_version = 0
 
 make_note = False
 
@@ -102,6 +107,12 @@ def render_love_blast(note_id: int, source: str) -> None:
         )
         st.session_state.love_blast_note = None
         st.session_state.love_blast_source = None
+
+
+def set_all_memory_selection(memory_ids: list[int]) -> None:
+    selected = st.session_state.get("select_all_memories", False)
+    for memory_id in memory_ids:
+        st.session_state[f"select_memory_{memory_id}"] = selected
 
 
 @st.dialog("Delete note?")
@@ -150,32 +161,79 @@ st.markdown('<div class="sky" aria-hidden="true"><span class="love-birds"><span 
 st.markdown('<div class="cupid-stage" aria-hidden="true"><span class="cupid">♥</span></div>', unsafe_allow_html=True)
 
 if st.session_state.show_memories:
+    if st.button("♥ Back to feed", key="back_from_memories_top"):
+        st.session_state.show_memories = False
+        st.rerun()
     st.markdown('<div class="memory-title">Our memories ♥</div>', unsafe_allow_html=True)
+    if st.session_state.get("memory_delete_pending"):
+        st.warning("Delete all selected memories permanently?")
+        confirm_col, cancel_col = st.columns(2)
+        with confirm_col:
+            if st.button("Yes, delete all", type="primary", key="confirm_memory_delete_top"):
+                for memory_id in st.session_state.get("selected_memory_ids", []):
+                    delete_memory(memory_id)
+                st.session_state.memory_delete_pending = False
+                st.session_state.selected_memory_ids = []
+                st.session_state.select_all_memories = False
+                st.rerun()
+        with cancel_col:
+            if st.button("Cancel", key="cancel_memory_delete_top"):
+                st.session_state.memory_delete_pending = False
+                st.rerun()
+    st.markdown('<div class="memory-uploader">', unsafe_allow_html=True)
     memory_files = st.file_uploader(
-        "Upload photos or videos for our memories",
+        "♥ Add memory",
         type=["png", "jpg", "jpeg", "webp", "mp4", "mov", "webm"],
         accept_multiple_files=True,
-        key="memory_gallery_upload",
+        key=f"memory_gallery_upload_{st.session_state.memory_upload_version}",
+        label_visibility="collapsed",
     )
+    st.markdown('</div>', unsafe_allow_html=True)
     if memory_files:
+        added_memory = False
         for memory_file in memory_files:
-            save_memory(memory_file.name, memory_file.type, memory_file.getvalue())
-        st.success("Memories added ♥")
-        st.rerun()
+            added_memory = save_memory(memory_file.name, memory_file.type, memory_file.getvalue()) or added_memory
+        if added_memory:
+            st.session_state.memory_upload_version += 1
+            st.success("Memories added ♥")
+            st.rerun()
+        else:
+            st.info("That memory is already in your collection.")
     memories = list_memories()
     if not memories:
         st.info("Your uploaded memories will appear here.")
     else:
+        memory_ids = [media["id"] for media in memories]
+        selected_memory_ids = [
+            memory_id
+            for memory_id in memory_ids
+            if st.session_state.get(f"select_memory_{memory_id}", False)
+        ]
+        toolbar_col, delete_col = st.columns([5, 1])
+        with toolbar_col:
+            st.checkbox(
+                "Select all",
+                key="select_all_memories",
+                on_change=set_all_memory_selection,
+                args=(memory_ids,),
+            )
+        with delete_col:
+            if selected_memory_ids and st.button("🗑", key="delete_selected_memories", help="Delete selected memories"):
+                st.session_state.selected_memory_ids = selected_memory_ids
+                st.session_state.memory_delete_pending = True
+                st.rerun()
         memory_columns = st.columns(2)
         for index, media in enumerate(memories):
             with memory_columns[index % 2]:
+                selected = st.checkbox(
+                    "Select",
+                    key=f"select_memory_{media['id']}",
+                    label_visibility="collapsed",
+                )
                 if media["media_type"].startswith("video/"):
                     st.video(media["path"])
                 else:
                     st.image(media["path"], caption="A moment with Mooo", width="stretch")
-    if st.button("♥ Back to feed", key="back_from_memories"):
-        st.session_state.show_memories = False
-        st.rerun()
     st.stop()
 
 add_note_col, _ = st.columns([1, 5])

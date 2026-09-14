@@ -1,6 +1,7 @@
 import sqlite3
 import uuid
 import os
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -79,10 +80,15 @@ def connection() -> sqlite3.Connection:
             id integer primary key autoincrement,
             file_name text not null,
             media_type text not null,
+            content_hash text,
             created_at text not null
         )
         """
     )
+    try:
+        database.execute("alter table memories add column content_hash text")
+    except sqlite3.OperationalError:
+        pass
     database.commit()
     return database
 
@@ -172,7 +178,15 @@ def list_media(note_id: int) -> list[dict]:
     return media
 
 
-def save_memory(original_name: str, media_type: str, content: bytes) -> None:
+def save_memory(original_name: str, media_type: str, content: bytes) -> bool:
+    content_hash = hashlib.sha256(content).hexdigest()
+    with connection() as database:
+        duplicate = database.execute(
+            "select id from memories where content_hash = ?", (content_hash,)
+        ).fetchone()
+    if duplicate:
+        return False
+
     MEDIA_DIRECTORY.mkdir(exist_ok=True)
     suffix = Path(original_name).suffix.lower()
     file_name = f"memory-{uuid.uuid4().hex}{suffix}"
@@ -188,10 +202,11 @@ def save_memory(original_name: str, media_type: str, content: bytes) -> None:
         )
     with connection() as database:
         database.execute(
-            "insert into memories (file_name, media_type, created_at) values (?, ?, ?)",
-            (file_name, media_type, datetime.now(timezone.utc).isoformat()),
+            "insert into memories (file_name, media_type, content_hash, created_at) values (?, ?, ?, ?)",
+            (file_name, media_type, content_hash, datetime.now(timezone.utc).isoformat()),
         )
         database.commit()
+    return True
 
 
 def list_memories() -> list[dict]:
@@ -216,6 +231,25 @@ def list_memories() -> list[dict]:
                 continue
         media.append({"id": row["id"], "path": local_path, "media_type": row["media_type"]})
     return media
+
+
+def delete_memory(memory_id: int) -> None:
+    with connection() as database:
+        row = database.execute(
+            "select file_name from memories where id = ?", (memory_id,)
+        ).fetchone()
+        database.execute("delete from memories where id = ?", (memory_id,))
+        database.commit()
+    if not row:
+        return
+    (MEDIA_DIRECTORY / row["file_name"]).unlink(missing_ok=True)
+    azure = azure_client()
+    if azure:
+        service, container_name = azure
+        try:
+            service.get_blob_client(container=container_name, blob=row["file_name"]).delete_blob()
+        except ResourceNotFoundError:
+            pass
 
 
 def save_reply(note_id: int, body: str) -> int:

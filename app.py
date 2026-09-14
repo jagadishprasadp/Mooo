@@ -49,6 +49,7 @@ st.markdown(
     .love-message { color:var(--rose); font-size:1.65rem; text-align:center; }.love-reaction { animation:love-reaction-out 4s ease-out forwards; overflow:hidden; }
     .feed-heading { margin-top:2.5rem; margin-bottom:1rem; }.divider { border-top:1px solid var(--line); margin:2.4rem 0; }.footer { color:var(--muted); text-align:center; font-size:.72rem; margin-top:2.5rem; }
     .stButton button { border:1px solid var(--line); border-radius:13px; background:#fff; color:var(--ink); min-height:2.7rem; }.primary button { background:var(--rose); color:#fff; }
+    [data-testid="stToolbar"] { display:none; }
     @keyframes fly-across { from { left:-54px; } to { left:calc(100% + 54px); } } @keyframes float-heart { from { transform:translateY(0); opacity:0; } to { transform:translateY(-82px); opacity:0; } } @keyframes love-reaction-out { 0%,70% { opacity:1; max-height:120px; } 100% { opacity:0; max-height:0; } }
     @keyframes feed-bird-float { 0%,100% { transform:translateY(2px) rotate(-8deg); } 50% { transform:translateY(-3px) rotate(8deg); } }
     </style>

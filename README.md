@@ -2,7 +2,18 @@
 
 A small Streamlit app for writing and sharing a heartfelt note with your partner.
 
-Notes are stored in the local SQLite file `notes.db`. The app shows saved notes under **Saved notes on this device**, and **Delete note** removes the selected note from the database. On Streamlit Cloud, local files can reset when the app restarts, so use this deployment for sharing the experience rather than permanent cloud storage.
+Notes are stored in the local SQLite file `notes.db`, and uploaded images/videos are stored in the `media` folder. The app shows saved notes under **Saved notes on this device**, and **Delete note** removes the selected note and its media. On Streamlit Cloud, local files can reset when the app restarts, so use this deployment for sharing the experience rather than permanent cloud storage.
+
+## Azure Blob Storage
+
+To keep uploaded media after deployment, create a private Azure Blob container and configure these secrets:
+
+```text
+AZURE_STORAGE_CONNECTION_STRING=your Azure connection string
+AZURE_STORAGE_CONTAINER=mooo-media
+```
+
+The app uploads media to Azure when both values are configured. It keeps a temporary local cache only for displaying media. Add the values in Streamlit Cloud under **App settings > Secrets**, or set them as environment variables on your server. Never commit the connection string to GitHub.
 
 ## Run locally
 
@@ -30,7 +41,7 @@ docker run --name mooo-app -p 8501:8501 mooo-app
 Open http://localhost:8501. To preserve the SQLite database across container removal, mount the database file:
 
 ```powershell
-docker run --name mooo-app -p 8501:8501 -v "${PWD}\notes.db:/app/notes.db" mooo-app
+docker run --name mooo-app -p 8501:8501 -v "${PWD}\notes.db:/app/notes.db" -v "${PWD}\media:/app/media" mooo-app
 ```
 
 ## Deploy publicly

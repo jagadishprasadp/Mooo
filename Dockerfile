@@ -11,8 +11,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY app.py storage.py README.md ./
+COPY app.py main.py storage.py ./
+COPY config ./config
+COPY repositories ./repositories
+COPY services ./services
 
 EXPOSE 8501
 
-CMD ["streamlit", "run", "app.py"]
+CMD ["python", "main.py"]

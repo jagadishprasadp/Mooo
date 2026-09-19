@@ -1,13 +1,32 @@
-from storage import delete_note, delete_reply, list_media, list_memories, list_notes, list_replies, save_media, save_memory, save_note, save_reply
 import base64
 from html import escape
+from pathlib import Path
 
 import streamlit as st
-from storage import delete_memory, delete_note, delete_reply, list_media, list_memories, list_notes, list_replies, save_media, save_memory, save_note, save_reply
+from storage import (
+    authenticate_user,
+    create_user,
+    delete_memory,
+    delete_note,
+    delete_reply,
+    delete_user,
+    ensure_admin_user,
+    get_user_by_id,
+    list_media,
+    list_memories,
+    list_notes,
+    list_replies,
+    list_users,
+    save_media,
+    save_memory,
+    save_note,
+    save_reply,
+    user_count,
+)
 
 PARTNER_NAME = " My Mooo"
 
-st.set_page_config(page_title="For you, always", page_icon="♥", layout="centered", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="For you, always", page_icon="♥", layout="centered", initial_sidebar_state="expanded")
 
 st.markdown(
     """
@@ -57,6 +76,97 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+def render_authentication() -> dict | None:
+    if st.session_state.get("auth_user"):
+        return st.session_state.auth_user
+
+    st.markdown('<div class="eyebrow"><span class="heart">♥</span> a private place</div>', unsafe_allow_html=True)
+    st.markdown('<h1><span class="heart">♥</span> Welcome<br>to Mooo.</h1>', unsafe_allow_html=True)
+    st.markdown('<p class="hero-copy">Sign in to keep your notes and memories close.</p>', unsafe_allow_html=True)
+    login_tab, create_tab = st.tabs(["Sign in", "Create account"])
+
+    with login_tab:
+        with st.form("login_form"):
+            username = st.text_input("Username", autocomplete="username")
+            password = st.text_input("Password", type="password", autocomplete="current-password")
+            submitted = st.form_submit_button("Sign in", type="primary", use_container_width=True)
+        if submitted:
+            user = authenticate_user(username, password)
+            if user:
+                st.session_state.auth_user = user
+                st.rerun()
+            st.error("That username or password is not correct.")
+
+    with create_tab:
+        if user_count() == 0:
+            st.info("The first account becomes the administrator.")
+        with st.form("create_account_form"):
+            new_username = st.text_input("Choose a username", autocomplete="username")
+            new_password = st.text_input("Choose a password", type="password", autocomplete="new-password")
+            confirm_password = st.text_input("Confirm password", type="password", autocomplete="new-password")
+            create_submitted = st.form_submit_button("Create account", use_container_width=True)
+        if create_submitted:
+            normalized_username = new_username.strip().lower()
+            if len(normalized_username) < 3:
+                st.error("Username must be at least 3 characters.")
+            elif len(new_password) < 8:
+                st.error("Password must be at least 8 characters.")
+            elif new_password != confirm_password:
+                st.error("The passwords do not match.")
+            elif not create_user(normalized_username, new_password):
+                st.error("That username is already registered.")
+            else:
+                st.success("Account created. You can sign in now.")
+    return None
+
+
+ensure_admin_user()
+if st.session_state.get("auth_user"):
+    current_user = get_user_by_id(st.session_state.auth_user["id"])
+    if current_user:
+        st.session_state.auth_user = current_user
+    else:
+        st.session_state.pop("auth_user", None)
+
+auth_user = render_authentication()
+if auth_user is None:
+    st.stop()
+
+is_admin = str(auth_user.get("role", "")).strip().lower() == "admin"
+with st.sidebar:
+    st.caption(f"Signed in as **{auth_user['username']}**")
+    if is_admin:
+        st.caption("Administrator")
+    if st.button("Sign out", use_container_width=True):
+        st.session_state.pop("auth_user", None)
+        st.rerun()
+
+@st.dialog("Admin panel", width="large")
+def render_admin_panel() -> None:
+    st.caption(f"Signed in as {auth_user['username']}")
+    st.write("Registered users")
+    for registered_user in list_users():
+        user_col, role_col, action_col = st.columns([4, 2, 1])
+        with user_col:
+            st.write(registered_user["username"])
+        with role_col:
+            st.caption(registered_user["role"])
+        with action_col:
+            can_delete = registered_user["id"] != auth_user["id"]
+            if st.button(
+                "Delete",
+                key=f"delete_user_{registered_user['id']}",
+                disabled=not can_delete,
+                help="Delete this user account",
+            ):
+                deleted, message = delete_user(
+                    registered_user["id"], auth_user["id"]
+                )
+                if deleted:
+                    st.rerun(scope="fragment")
+                st.error(message)
+
 if "show_letter" not in st.session_state:
     st.session_state.show_letter = False
 if "saved_note" not in st.session_state:
@@ -77,6 +187,16 @@ if "show_memories" not in st.session_state:
     st.session_state.show_memories = False
 if "memory_upload_version" not in st.session_state:
     st.session_state.memory_upload_version = 0
+if "memories_page" not in st.session_state:
+    st.session_state.memories_page = 1
+if "feed_page" not in st.session_state:
+    st.session_state.feed_page = 1
+
+if is_admin:
+    admin_col, _ = st.columns([1, 5])
+    with admin_col:
+        if st.button("Admin panel", key="open_admin_panel", help="Open administrator controls"):
+            render_admin_panel()
 
 make_note = False
 
@@ -87,6 +207,15 @@ def note_background(note_id: int) -> str | None:
             encoded = base64.b64encode(media["path"].read_bytes()).decode("ascii")
             return f"data:{media['media_type']};base64,{encoded}"
     return None
+
+
+@st.cache_data(show_spinner=False)
+def cached_media_bytes(path_string: str, modified_ns: int) -> bytes:
+    return Path(path_string).read_bytes()
+
+
+def cached_image(path) -> bytes:
+    return cached_media_bytes(str(path), path.stat().st_mtime_ns)
 
 
 def render_note_media(note_id: int, skip_images: bool = False) -> None:
@@ -114,6 +243,63 @@ def set_all_memory_selection(memory_ids: list[int]) -> None:
     selected = st.session_state.get("select_all_memories", False)
     for memory_id in memory_ids:
         st.session_state[f"select_memory_{memory_id}"] = selected
+
+
+@st.dialog("Mooo note", width="large")
+def open_note_dialog(note_id: int) -> None:
+    saved_note = next((note for note in list_notes() if note["id"] == note_id), None)
+    if saved_note is None:
+        st.info("This note is no longer available.")
+        return
+
+    media = list_media(note_id)
+    image_media = next(
+        (
+            item
+            for item in media
+            if item["media_type"].startswith("image/") and item["path"].exists()
+        ),
+        None,
+    )
+    if image_media:
+        st.image(cached_image(image_media["path"]), width="stretch")
+    st.caption(saved_note["feeling"])
+    st.markdown(f'<div class="letter-body">{escape(saved_note["body"])}</div>', unsafe_allow_html=True)
+
+    with st.form(f"dialog_reply_{note_id}"):
+        dialog_reply = st.text_area(
+            "Reply to this note",
+            placeholder="I missed you too...",
+            height=90,
+            key=f"dialog_reply_text_{note_id}",
+        )
+        send_dialog_reply = st.form_submit_button("Send reply", type="primary")
+    if send_dialog_reply:
+        if dialog_reply.strip():
+            save_reply(note_id, dialog_reply.strip())
+            st.rerun(scope="fragment")
+        st.warning("Write a few words first.")
+
+    replies = list_replies(note_id)
+    if replies:
+        st.markdown("#### Replies")
+        for saved_reply in replies:
+            reply_col, delete_reply_col = st.columns([6, 1])
+            with reply_col:
+                st.markdown(
+                    f'<div class="letter"><div class="letter-body">{escape(saved_reply["body"])}</div></div>',
+                    unsafe_allow_html=True,
+                )
+            with delete_reply_col:
+                if st.button("Delete", key=f"dialog_delete_reply_{saved_reply['id']}"):
+                    delete_reply(saved_reply["id"])
+                    st.rerun(scope="fragment")
+
+    st.divider()
+    if st.button("Delete note and media", key=f"dialog_delete_note_{note_id}", type="secondary"):
+        delete_note(note_id)
+        st.session_state.selected_feed_note = None
+        st.rerun()
 
 
 @st.dialog("Delete note?")
@@ -204,7 +390,13 @@ if st.session_state.show_memories:
     if not memories:
         st.info("Your uploaded memories will appear here.")
     else:
-        memory_ids = [media["id"] for media in memories]
+        page_size = 5
+        total_pages = (len(memories) + page_size - 1) // page_size
+        st.session_state.memories_page = max(1, min(st.session_state.memories_page, total_pages))
+        start_index = (st.session_state.memories_page - 1) * page_size
+        end_index = start_index + page_size
+        page_memories = memories[start_index:end_index]
+        memory_ids = [media["id"] for media in page_memories]
         selected_memory_ids = [
             memory_id
             for memory_id in memory_ids
@@ -224,9 +416,9 @@ if st.session_state.show_memories:
                 st.session_state.memory_delete_pending = True
                 st.rerun()
         memory_columns = st.columns(2)
-        for index, media in enumerate(memories):
+        for index, media in enumerate(page_memories):
             with memory_columns[index % 2]:
-                selected = st.checkbox(
+                st.checkbox(
                     "Select",
                     key=f"select_memory_{media['id']}",
                     label_visibility="collapsed",
@@ -235,6 +427,18 @@ if st.session_state.show_memories:
                     st.video(media["path"])
                 else:
                     st.image(media["path"], caption="A moment with Mooo", width="stretch")
+
+        pagination_cols = st.columns([1, 1, 2, 1, 1])
+        with pagination_cols[0]:
+            if st.button("← Prev", key="memories_prev_btn", disabled=st.session_state.memories_page <= 1):
+                st.session_state.memories_page -= 1
+                st.rerun()
+        with pagination_cols[1]:
+            st.caption(f"Page {st.session_state.memories_page}/{total_pages}")
+        with pagination_cols[3]:
+            if st.button("Next →", key="memories_next_btn", disabled=st.session_state.memories_page >= total_pages):
+                st.session_state.memories_page += 1
+                st.rerun()
     st.stop()
 
 add_note_col, _ = st.columns([1, 5])
@@ -288,71 +492,33 @@ if make_note:
         st.session_state.show_composer = False
 
 latest_notes = list_notes()
+page_size = 5
+feed_total_pages = (len(latest_notes) + page_size - 1) // page_size
+st.session_state.feed_page = max(1, min(st.session_state.feed_page, feed_total_pages if feed_total_pages else 1))
+feed_start = (st.session_state.feed_page - 1) * page_size
+feed_end = feed_start + page_size
 
 st.markdown('<div class="eyebrow feed-heading"><span class="heart">♥</span> our little feed</div>', unsafe_allow_html=True)
-saved_notes = latest_notes
+saved_notes = latest_notes[feed_start:feed_end]
 if not saved_notes:
     st.caption("Your saved notes will appear here.")
 else:
-    for saved in saved_notes[:10]:
-        background = note_background(saved["id"])
+    for saved in saved_notes:
         image_media = next(
             (
                 media
-                for media in list_media(saved["id"])
-                if media["media_type"].startswith("image/") and media["path"].exists()
+                for media in list_media(saved["id"], include_original=False)
+                if media["media_type"].startswith("image/")
+                and media.get("thumbnail_path", media["path"]).exists()
             ),
             None,
         )
-        background_style = (
-            f' style="background-image:linear-gradient(135deg,rgba(255,250,247,.94),rgba(255,243,238,.76)),url(\'{background}\');"'
-            if background
-            else ""
-        )
-        note_is_open = st.session_state.selected_feed_note == saved["id"]
-        if image_media and not note_is_open:
-            st.image(image_media["path"], width="stretch")
-            image_action_col, comment_action_col, replies_action_col, delete_action_col, _ = st.columns([1, 1, 1, 1, 2])
-            with image_action_col:
-                if st.button("💌", key=f"open_note_{saved['id']}", help="Open my love note"):
-                    st.session_state.selected_feed_note = saved["id"]
-                    st.rerun()
-            with comment_action_col:
-                if st.button("💬", key=f"comment_note_{saved['id']}", help="Reply to this note"):
-                    st.session_state.comment_note = None if st.session_state.comment_note == saved["id"] else saved["id"]
-                    st.rerun()
-            with replies_action_col:
-                if st.button("🗨", key=f"show_replies_{saved['id']}", help="Show all replies"):
-                    st.session_state.show_replies = (
-                        None if st.session_state.show_replies == saved["id"] else saved["id"]
-                    )
-                    st.rerun()
-            with delete_action_col:
-                if st.button("🗑", key=f"delete_saved_image_{saved['id']}", help="Delete this note"):
-                    confirm_note_delete(saved["id"])
-        elif image_media:
-            st.markdown(
-                f'<div class="feed-item note-background"{background_style}><div class="letter-line">{escape(saved["feeling"])}</div><div class="feed-body">{escape(saved["body"])}</div><div class="note-signature">J ♥</div></div>',
-                unsafe_allow_html=True,
-            )
-            image_action_col, comment_action_col, replies_action_col, delete_action_col, _ = st.columns([1, 1, 1, 1, 2])
-            with image_action_col:
-                if st.button("💌", key=f"close_note_{saved['id']}", help="Close my love note"):
-                    st.session_state.selected_feed_note = None
-                    st.rerun()
-            with comment_action_col:
-                if st.button("💬", key=f"comment_open_note_{saved['id']}", help="Reply to this note"):
-                    st.session_state.comment_note = None if st.session_state.comment_note == saved["id"] else saved["id"]
-                    st.rerun()
-            with replies_action_col:
-                if st.button("🗨", key=f"show_open_replies_{saved['id']}", help="Show all replies"):
-                    st.session_state.show_replies = (
-                        None if st.session_state.show_replies == saved["id"] else saved["id"]
-                    )
-                    st.rerun()
-            with delete_action_col:
-                if st.button("🗑", key=f"delete_saved_open_{saved['id']}", help="Delete this note"):
-                    confirm_note_delete(saved["id"])
+        if image_media:
+            thumbnail_path = image_media.get("thumbnail_path", image_media["path"])
+            display_path = thumbnail_path if thumbnail_path.exists() else image_media["path"]
+            st.image(cached_image(display_path), width="stretch")
+            if st.button("Open note", key=f"open_note_{saved['id']}", use_container_width=True):
+                open_note_dialog(saved["id"])
         else:
             st.markdown(
                 f'<div class="feed-item"><div class="letter-line">{escape(saved["feeling"])}</div><div class="feed-body">{escape(saved["body"])}</div><div class="note-signature">J ♥</div></div>',
@@ -377,7 +543,7 @@ else:
         st.markdown('<div class="feed-love-birds" aria-hidden="true"><span>♥</span><span>♥</span></div>', unsafe_allow_html=True)
         reply = ""
         send_reply = False
-        if st.session_state.comment_note == saved["id"]:
+        if not image_media and st.session_state.comment_note == saved["id"]:
             with st.form(f"reply_{saved['id']}"):
                 reply = st.text_area(
                     "Reply to this note",
@@ -394,7 +560,7 @@ else:
                 st.session_state.love_blast_note = saved["id"]
                 st.session_state.love_blast_source = "feed"
                 st.rerun()
-        if st.session_state.show_replies == saved["id"]:
+        if not image_media and st.session_state.show_replies == saved["id"]:
             for saved_reply in list_replies(saved["id"]):
                 reply_col, delete_reply_col = st.columns([6, 1])
                 with reply_col:
@@ -405,4 +571,17 @@ else:
                 with delete_reply_col:
                     if st.button("🗑", key=f"delete_feed_reply_{saved_reply['id']}", help="Delete this reply"):
                         confirm_reply_delete(saved_reply["id"])
+
+    if len(latest_notes) > 0:
+        pagination_cols = st.columns([1, 1, 2, 1, 1])
+        with pagination_cols[0]:
+            if st.button("← Prev", key="feed_prev_btn", disabled=st.session_state.feed_page <= 1):
+                st.session_state.feed_page -= 1
+                st.rerun()
+        with pagination_cols[1]:
+            st.caption(f"Page {st.session_state.feed_page}/{max(feed_total_pages, 1)}")
+        with pagination_cols[3]:
+            if st.button("Next →", key="feed_next_btn", disabled=st.session_state.feed_page >= feed_total_pages):
+                st.session_state.feed_page += 1
+                st.rerun()
 st.markdown('<div class="footer">Made with a full heart · private on this device</div>', unsafe_allow_html=True)

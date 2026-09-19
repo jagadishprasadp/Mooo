@@ -1,0 +1,50 @@
+name: Build and deploy Mooo
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: mooo
+  ACR_NAME: ${{ secrets.AZURE_ACR_NAME }}
+  REGISTRY_LOGIN_SERVER: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+  WEBAPP_NAME: ${{ secrets.AZURE_WEBAPP_NAME }}
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Sign in to Azure
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Sign in to Azure Container Registry
+        run: az acr login --name "$ACR_NAME"
+
+      - name: Build and push image
+        run: |
+          docker build \
+            --tag "$REGISTRY_LOGIN_SERVER/$IMAGE_NAME:${GITHUB_SHA}" \
+            --tag "$REGISTRY_LOGIN_SERVER/$IMAGE_NAME:latest" \
+            .
+          docker push "$REGISTRY_LOGIN_SERVER/$IMAGE_NAME:${GITHUB_SHA}"
+          docker push "$REGISTRY_LOGIN_SERVER/$IMAGE_NAME:latest"
+
+      - name: Deploy image to Azure App Service
+        uses: azure/webapps-deploy@v3
+        with:
+          app-name: ${{ secrets.AZURE_WEBAPP_NAME }}
+          images: ${{ env.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ github.sha }}

@@ -32,7 +32,10 @@ jobs:
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
       - name: Sign in to Azure Container Registry
-        run: az acr login --name "$ACR_NAME"
+        run: |
+          echo "Checking Azure Container Registry resource..."
+          az acr show --name "$ACR_NAME" --query "loginServer" --output tsv
+          az acr login --name "$ACR_NAME"
 
       - name: Build and push image
         run: |

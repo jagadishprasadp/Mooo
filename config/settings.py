@@ -1,9 +1,16 @@
+"""Application settings read from environment variables or Streamlit secrets."""
+
 import os
+from pathlib import Path
 
 try:
     import streamlit as st
-except Exception:  # pragma: no cover - optional in non-Streamlit runtime
+except ImportError:  # pragma: no cover - Streamlit is optional outside the app runtime
     st = None
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATABASE_PATH = PROJECT_ROOT / "notes.db"
+MEDIA_DIRECTORY = PROJECT_ROOT / "media"
 
 
 def get_setting(name: str) -> str:

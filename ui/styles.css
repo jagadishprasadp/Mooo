@@ -1,0 +1,77 @@
+:root { --ink:#24201f; --rose:#b84f5c; --line:#eadbd5; --muted:#887b76; }
+.stApp { background:linear-gradient(135deg,#fffaf7 0%,#fff3ee 48%,#f8e6e4 100%); color:var(--ink); }
+.block-container { max-width:760px; padding:2.5rem 1.2rem 4rem; }
+h1,h2,h3 { font-family:Georgia,serif; }
+p,div,label,input,textarea,button { font-family:Arial,sans-serif; }
+h1 { font-size:clamp(3rem,10vw,6.8rem); line-height:.91; margin:.5rem 0 1.2rem; }
+[data-testid="stToolbar"] { display:none; }
+
+/* Header */
+.eyebrow { color:var(--rose); font-size:.68rem; letter-spacing:.16em; text-transform:uppercase; }
+.hero-copy { max-width:520px; color:var(--muted); font-size:1rem; line-height:1.8; }
+.heart,.partner-name { color:var(--rose); }
+
+/* Decorations */
+.sky { position:relative; height:40px; overflow:hidden; pointer-events:none; }
+.love-birds { position:absolute; top:12px; left:-54px; width:48px; height:18px; animation:fly-across 16s linear infinite; }
+.bird { position:absolute; top:6px; width:18px; height:8px; opacity:.5; }
+.bird::before,.bird::after { content:""; position:absolute; top:2px; width:9px; height:5px; border-top:2px solid var(--rose); }
+.bird::before { right:8px; transform:rotate(24deg); }
+.bird::after { left:8px; transform:rotate(-24deg); }
+.bird-one { left:0; }
+.bird-two { left:22px; top:2px; transform:scale(.8); }
+.bird-heart { position:absolute; left:18px; top:-6px; color:var(--rose); }
+.cupid-stage { position:relative; height:34px; }
+.cupid { position:absolute; right:15%; color:var(--rose); }
+.feed-love-birds { display:flex; justify-content:center; gap:1.4rem; height:28px; margin:.35rem 0 -.2rem; color:var(--rose); pointer-events:none; }
+.feed-love-birds span { display:inline-block; font-size:.9rem; animation:feed-bird-float 2s ease-in-out infinite; }
+.feed-love-birds span:nth-child(2) { animation-delay:-.7s; font-size:.7rem; }
+
+/* Memories */
+.memories-button button { min-height:4rem; border:0; border-radius:999px; background:#d33145; color:#fff; font-size:1.05rem !important; line-height:1; box-shadow:0 10px 24px rgba(211,49,69,.22); padding:.7rem 1.1rem; }
+.memories-button button:hover { border:0; background:#b9273a; color:#fff; transform:scale(1.05); }
+.memory-title { color:var(--rose); font-family:Georgia,serif; font-size:2.4rem; text-align:center; margin:1rem 0 2rem; }
+.memory-uploader [data-testid="stFileUploaderDropzoneInstructions"] { display:none; }
+.memory-uploader [data-testid="stFileUploaderDropzone"] { padding:.55rem; background:transparent; border:0; }
+
+/* Notes and feed */
+.letter,.feed-item { background:rgba(255,255,255,.74); border:1px solid var(--line); border-radius:20px; padding:1.1rem; box-shadow:0 12px 35px rgba(111,54,47,.06); }
+.letter-line { color:var(--muted); font-size:.8rem; margin-bottom:1rem; }
+.letter-body,.feed-body { white-space:pre-wrap; font-family:Georgia,serif; line-height:1.55; }
+.note-signature { color:var(--rose); font-family:Georgia,serif; font-size:1.05rem; font-style:italic; text-align:right; margin-top:1rem; }
+.feed-heading { margin-top:2.5rem; margin-bottom:1rem; }
+.footer { color:var(--muted); text-align:center; font-size:.72rem; margin-top:2.5rem; }
+.love-burst { position:relative; height:72px; overflow:hidden; pointer-events:none; }
+.love-burst span { position:absolute; bottom:-20px; left:50%; color:var(--rose); font-size:1.5rem; animation:float-heart 3.2s ease-out forwards; }
+.love-message { color:var(--rose); font-size:1.65rem; text-align:center; }
+.love-reaction { animation:love-reaction-out 4s ease-out forwards; overflow:hidden; }
+
+/* Reply box */
+[class*="st-key-reply-box"] { background:linear-gradient(135deg,#fffafb 0%,#fff0f3 100%); border:1px solid #f3d3d8; border-radius:24px; padding:1rem 1.1rem .7rem; box-shadow:0 10px 28px rgba(184,79,92,.08); margin:.6rem 0 1rem; }
+[class*="st-key-reply-box"] label p { color:var(--rose); font-family:Georgia,serif; font-size:1rem; }
+[class*="st-key-reply-box"] [data-baseweb="textarea"] { background:#fff8f9; border:1px solid #f3c9cf; border-radius:18px; transition:border-color .2s, box-shadow .2s; }
+[class*="st-key-reply-box"] [data-baseweb="textarea"]:focus-within { border-color:var(--rose); box-shadow:0 0 0 3px rgba(184,79,92,.15); }
+[class*="st-key-reply-box"] textarea { background:transparent; font-family:Georgia,serif; font-size:1rem; color:var(--ink); }
+[class*="st-key-reply-box"] textarea::placeholder { color:#c9a3a9; font-style:italic; }
+[class*="st-key-reply-box"] [data-testid="stFormSubmitButton"] button { background:linear-gradient(135deg,#e2687a 0%,var(--rose) 100%); color:#fff; border:0; border-radius:999px; padding:.45rem 1.4rem; box-shadow:0 8px 18px rgba(184,79,92,.25); transition:transform .15s, box-shadow .15s; }
+[class*="st-key-reply-box"] [data-testid="stFormSubmitButton"] button:hover { color:#fff; transform:translateY(-1px) scale(1.03); box-shadow:0 10px 22px rgba(184,79,92,.32); }
+
+/* Replies */
+.reply-heading { color:var(--rose); font-family:Georgia,serif; font-size:1.05rem; margin:1.1rem 0 .5rem; }
+.reply-bubble { display:flex; gap:.7rem; align-items:flex-start; background:linear-gradient(135deg,#fff 0%,#fff4f6 100%); border:1px solid #f6dade; border-radius:20px 20px 20px 6px; padding:.75rem 1rem; box-shadow:0 6px 16px rgba(184,79,92,.07); animation:reply-pop .35s ease-out; }
+.reply-avatar { flex:none; display:grid; place-items:center; width:1.9rem; height:1.9rem; border-radius:50%; background:linear-gradient(135deg,#f7b6c0,#e2687a); color:#fff; font-size:.85rem; box-shadow:0 3px 8px rgba(226,104,122,.35); }
+.reply-text { white-space:pre-wrap; font-family:Georgia,serif; line-height:1.5; color:var(--ink); }
+.reply-time { color:#c09aa0; font-size:.72rem; margin-top:.25rem; }
+[class*="st-key-reply-row"] { margin-bottom:.35rem; }
+[class*="st-key-reply-row"] .stButton button { min-height:2.1rem; width:2.1rem; padding:0; border:0; border-radius:50%; background:transparent; color:var(--muted); opacity:.6; }
+[class*="st-key-reply-row"] .stButton button:hover { opacity:1; background:#fde8eb; color:var(--rose); }
+
+/* Buttons */
+.stButton button { border:1px solid var(--line); border-radius:13px; background:#fff; color:var(--ink); min-height:2.7rem; }
+.primary button { background:var(--rose); color:#fff; }
+
+@keyframes fly-across { from { left:-54px; } to { left:calc(100% + 54px); } }
+@keyframes float-heart { from { transform:translateY(0); opacity:0; } to { transform:translateY(-82px); opacity:0; } }
+@keyframes love-reaction-out { 0%,70% { opacity:1; max-height:120px; } 100% { opacity:0; max-height:0; } }
+@keyframes feed-bird-float { 0%,100% { transform:translateY(2px) rotate(-8deg); } 50% { transform:translateY(-3px) rotate(8deg); } }
+@keyframes reply-pop { from { opacity:0; transform:translateY(6px) scale(.98); } to { opacity:1; transform:none; } }

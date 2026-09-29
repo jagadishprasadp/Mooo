@@ -1,8 +1,12 @@
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
+import logging
 import os
 import secrets
 import sqlite3
+import threading
+import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -16,6 +20,19 @@ from repositories.schema import sqlite_schema, azure_sql_schema
 
 DATABASE_PATH = Path(__file__).with_name("notes.db")
 MEDIA_DIRECTORY = Path(__file__).with_name("media")
+# Azure SQL transient codes, including serverless auto-resume (40613).
+TRANSIENT_SQL_ERRORS = {40613, 40197, 40501, 49918, 49919, 49920, 4060}
+SQL_CONNECT_ATTEMPTS = 6
+SQL_RETRY_DELAY_SECONDS = 10
+
+logger = logging.getLogger(__name__)
+# pymssql connections are not thread-safe, so each Streamlit run thread keeps its own.
+_thread_state = threading.local()
+_schema_lock = threading.Lock()
+_schema_ready = False
+_blob_lock = threading.Lock()
+_blob_client: tuple[BlobServiceClient, str] | None = None
+_blob_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="blob-delete")
 
 
 def _thumbnail_name(file_name: str) -> str:
@@ -65,27 +82,41 @@ def azure_sql_connection() -> pymssql.Connection | None:
     config = azure_sql_settings()
     if not config:
         return None
-    return pymssql.connect(
-        server=config["server"],
-        database=config["database"],
-        user=config["user"],
-        password=config["password"],
-        login_timeout=30,
-    )
+    for attempt in range(1, SQL_CONNECT_ATTEMPTS + 1):
+        try:
+            return pymssql.connect(
+                server=config["server"],
+                database=config["database"],
+                user=config["user"],
+                password=config["password"],
+                login_timeout=30,
+            )
+        except pymssql.OperationalError as error:
+            code = error.args[0] if error.args else None
+            if code not in TRANSIENT_SQL_ERRORS or attempt == SQL_CONNECT_ATTEMPTS:
+                raise
+            time.sleep(SQL_RETRY_DELAY_SECONDS)
+    return None
 
 
 def azure_client() -> tuple[BlobServiceClient, str] | None:
+    global _blob_client
+    if _blob_client is not None:
+        return _blob_client
     connection_string = _azure_setting("AZURE_STORAGE_CONNECTION_STRING")
     container_name = _azure_setting("AZURE_STORAGE_CONTAINER")
     if not connection_string or not container_name:
         return None
-    service = BlobServiceClient.from_connection_string(connection_string)
-    container = service.get_container_client(container_name)
-    try:
-        container.create_container()
-    except ResourceExistsError:
-        pass
-    return service, container_name
+    with _blob_lock:
+        if _blob_client is None:
+            service = BlobServiceClient.from_connection_string(connection_string)
+            container = service.get_container_client(container_name)
+            try:
+                container.create_container()
+            except ResourceExistsError:
+                pass
+            _blob_client = (service, container_name)
+    return _blob_client
 
 
 def sqlite_connection() -> sqlite3.Connection:
@@ -102,17 +133,45 @@ def sqlite_connection() -> sqlite3.Connection:
 
 
 def ensure_azure_sql_schema(database) -> None:
-    cursor = database.cursor()
-    for statement in azure_sql_schema():
-        cursor.execute(statement)
-    database.commit()
+    global _schema_ready
+    if _schema_ready:
+        return
+    with _schema_lock:
+        if _schema_ready:
+            return
+        cursor = database.cursor()
+        for statement in azure_sql_schema():
+            cursor.execute(statement)
+        database.commit()
+        _schema_ready = True
+
+
+def _connection_alive(database) -> bool:
+    try:
+        cursor = database.cursor()
+        cursor.execute("select 1")
+        cursor.fetchone()
+        return True
+    except Exception:
+        return False
 
 
 def connection():
     if azure_sql_settings():
-        database = azure_sql_connection()
+        database = getattr(_thread_state, "azure_database", None)
+        last_used = getattr(_thread_state, "azure_last_used", 0.0)
+        if database is not None and time.monotonic() - last_used > 60 and not _connection_alive(database):
+            try:
+                database.close()
+            except Exception:
+                pass
+            database = None
         if database is None:
-            raise RuntimeError("Azure SQL is configured but the database connection could not be established.")
+            database = azure_sql_connection()
+            if database is None:
+                raise RuntimeError("Azure SQL is configured but the database connection could not be established.")
+            _thread_state.azure_database = database
+        _thread_state.azure_last_used = time.monotonic()
         ensure_azure_sql_schema(database)
         return database
     return sqlite_connection()
@@ -136,12 +195,18 @@ def _delete_uploaded_file(file_name: str | None) -> None:
     if azure is None:
         return
 
+    _blob_executor.submit(_delete_blobs, azure, file_names)
+
+
+def _delete_blobs(azure: tuple[BlobServiceClient, str], file_names: list[str]) -> None:
     service, container_name = azure
     for stored_name in file_names:
         try:
             service.get_blob_client(container=container_name, blob=stored_name).delete_blob()
         except ResourceNotFoundError:
             pass
+        except Exception:
+            logger.exception("Failed to delete blob %s", stored_name)
 
 
 def _password_hash(password: str, salt: bytes | None = None) -> str:

@@ -17,9 +17,9 @@ def remember(user_id: int) -> None:
     love_metrics.insert_reminder(user_id, datetime.now(timezone.utc).isoformat())
 
 
-def summary(user_id: int) -> dict[str, int]:
+def summary() -> dict[str, int]:
     now = datetime.now(timezone.utc)
     return {
-        label: love_metrics.count_since(user_id, (now - duration).isoformat())
+        label: love_metrics.count_admin_reminders_since((now - duration).isoformat())
         for label, (duration, _) in PERIODS.items()
     }

@@ -11,11 +11,13 @@ def insert_reminder(user_id: int, remembered_at: str) -> None:
         )
 
 
-def count_since(user_id: int, since: str) -> int:
+def count_admin_reminders_since(since: str) -> int:
     with transaction() as session:
         return int(
             session.fetch_value(
-                "select count(*) from love_reminders where user_id = ? and remembered_at >= ?",
-                (user_id, since),
+                "select count(*) from love_reminders reminders "
+                "join users on users.id = reminders.user_id "
+                "where users.role = ? and reminders.remembered_at >= ?",
+                ("admin", since),
             )
         )

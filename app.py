@@ -6,6 +6,7 @@ from repositories.database import DatabaseUnavailableError
 from services import accounts
 from ui import auth, feed
 from ui.common import apply_styles, init_session_state
+from ui.love_metrics import render_love_metrics
 from ui.memories import render_memories_page
 
 
@@ -35,7 +36,8 @@ def _render_app() -> None:
         return
 
     feed.render_header()
-    feed.render_composer()
+    render_love_metrics(user)
+    feed.render_composer(user)
     feed.render_feed()
     feed.render_footer()
 

@@ -3,21 +3,28 @@
 from repositories.database import transaction
 
 
-def insert_note(partner: str, feeling: str, body: str, created_at: str) -> int:
+def insert_note(partner: str, feeling: str, body: str, author_username: str, created_at: str) -> int:
     with transaction() as session:
         return session.insert(
-            "insert into notes (partner, feeling, body, created_at) values (?, ?, ?, ?)",
-            (partner, feeling, body, created_at),
+            "insert into notes (partner, feeling, body, author_username, created_at) values (?, ?, ?, ?, ?)",
+            (partner, feeling, body, author_username, created_at),
         )
 
 
 def list_notes() -> list[dict]:
     with transaction() as session:
         rows = session.fetch_all(
-            "select id, partner, feeling, body, created_at from notes order by id desc"
+            "select id, partner, feeling, body, author_username, created_at from notes order by id desc"
         )
     return [
-        {"id": row[0], "partner": row[1], "feeling": row[2], "body": row[3], "created_at": row[4]}
+        {
+            "id": row[0],
+            "partner": row[1],
+            "feeling": row[2],
+            "body": row[3],
+            "author_username": row[4],
+            "created_at": row[5],
+        }
         for row in rows
     ]
 
@@ -25,11 +32,18 @@ def list_notes() -> list[dict]:
 def get_note(note_id: int) -> dict | None:
     with transaction() as session:
         row = session.fetch_one(
-            "select id, partner, feeling, body, created_at from notes where id = ?", (note_id,)
+            "select id, partner, feeling, body, author_username, created_at from notes where id = ?", (note_id,)
         )
     if row is None:
         return None
-    return {"id": row[0], "partner": row[1], "feeling": row[2], "body": row[3], "created_at": row[4]}
+    return {
+        "id": row[0],
+        "partner": row[1],
+        "feeling": row[2],
+        "body": row[3],
+        "author_username": row[4],
+        "created_at": row[5],
+    }
 
 
 def delete_note(note_id: int) -> list[str]:

@@ -42,6 +42,9 @@ h1 { font-size:clamp(3rem,10vw,6.8rem); line-height:.91; margin:.5rem 0 1.2rem; 
 .feed-video-frame [data-testid="stVideo"], .feed-video-frame video { width:100%; height:100%; object-fit:contain; }
 
 /* Notes and feed */
+.love-meter-heading { margin:1.4rem 0 .55rem; }
+.love-meter-count { color:var(--muted); font-family:Georgia,serif; margin:.75rem 0 .35rem; }
+.love-meter-count strong { color:var(--rose); font-size:1.5rem; }
 .letter,.feed-item { background:rgba(255,255,255,.74); border:1px solid var(--line); border-radius:20px; padding:1.1rem; box-shadow:0 12px 35px rgba(111,54,47,.06); animation:card-arrive .55s ease-out both; }
 .feed-item:nth-of-type(2) { animation-delay:.08s; }
 .feed-item:nth-of-type(3) { animation-delay:.16s; }
@@ -49,6 +52,13 @@ h1 { font-size:clamp(3rem,10vw,6.8rem); line-height:.91; margin:.5rem 0 1.2rem; 
 .letter-line { color:var(--muted); font-size:.8rem; margin-bottom:1rem; }
 .letter-body,.feed-body { white-space:pre-wrap; font-family:Georgia,serif; line-height:1.55; }
 .note-signature { color:var(--rose); font-family:Georgia,serif; font-size:1.05rem; font-style:italic; text-align:right; margin-top:1rem; }
+.open-note-image { position:relative; width:100%; aspect-ratio:16 / 9; overflow:hidden; border-radius:8px; background:#3e252a; }
+.open-note-image img { display:block; width:100%; height:100%; object-fit:cover; object-position:center; filter:blur(3.5px); transform:scale(1.025); }
+.open-note-overlay { position:absolute; inset:0; padding:1.5rem; background:linear-gradient(135deg,rgba(255,255,255,.08),transparent 55%,rgba(28,20,19,.12)); }
+.open-note-message { position:absolute; z-index:1; top:18%; left:18%; max-width:62%; white-space:pre-wrap; color:#443d3c; font-family:"Comic Sans MS","Segoe Print",cursive; font-size:clamp(1rem,2vw,1.34rem); font-weight:600; font-style:normal; line-height:1.38; letter-spacing:.01em; text-align:left; text-shadow:0 1px 4px rgba(255,255,255,.98); }
+.open-note-message::before { content:"♥  ♥  ♥"; display:block; margin-bottom:.65rem; color:#c94a62; font-family:Georgia,serif; font-size:.9rem; font-style:normal; }
+.open-note-author { position:absolute; z-index:1; right:12%; bottom:10%; color:#443d3c; text-align:right; font-family:"Comic Sans MS","Segoe Print",cursive; font-weight:600; font-style:normal; font-size:clamp(.9rem,1.7vw,1.15rem); letter-spacing:.01em; text-shadow:0 1px 4px rgba(255,255,255,.98); }
+@media (max-width:700px) { .open-note-message { top:12%; left:10%; max-width:80%; } .open-note-author { right:8%; bottom:7%; } }
 .feed-heading { margin-top:2.5rem; margin-bottom:1rem; }
 .footer { color:var(--muted); text-align:center; font-size:.72rem; margin-top:2.5rem; }
 .love-burst { position:relative; height:72px; overflow:hidden; pointer-events:none; }

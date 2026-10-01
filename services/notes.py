@@ -11,8 +11,8 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def create_note(partner: str, feeling: str, body: str) -> int:
-    return notes.insert_note(partner, feeling, body, _now())
+def create_note(partner: str, feeling: str, body: str, author_username: str) -> int:
+    return notes.insert_note(partner, feeling, body, author_username, _now())
 
 
 def attach_media(note_id: int, original_name: str, media_type: str, content: bytes) -> None:

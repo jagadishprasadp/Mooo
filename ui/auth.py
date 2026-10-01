@@ -11,10 +11,22 @@ from services import accounts
 from services import media
 
 AUTH_COOKIE = "mooo_auth"
+COOKIE_PROBE_KEY = "auth_cookie_probe_started"
 
 
 def _cookies() -> CookieController:
     return CookieController()
+
+
+def _get_cookie(name: str) -> str | None:
+    controller = _cookies()
+    if not st.session_state.get(COOKIE_PROBE_KEY):
+        st.session_state[COOKIE_PROBE_KEY] = True
+        st.stop()
+    if controller.getAll() is None:
+        st.stop()
+    value = controller.get(name)
+    return str(value) if value else None
 
 
 def _token_hash(token: str) -> str:
@@ -25,9 +37,9 @@ def current_user() -> dict | None:
     """Return the signed-in user, refreshed from the database so role changes apply."""
     stored = st.session_state.get("auth_user")
     if not stored:
-        token = _cookies().get(AUTH_COOKIE)
+        token = _get_cookie(AUTH_COOKIE)
         if token:
-            user_id = sessions.find_user_id(str(token))
+            user_id = sessions.find_user_id(_token_hash(token))
             if user_id is not None:
                 stored = accounts.get_user(user_id)
                 if stored:
@@ -68,7 +80,6 @@ def _render_sign_in_form() -> None:
     token = secrets.token_urlsafe(32)
     sessions.create(user["id"], _token_hash(token))
     _cookies().set(AUTH_COOKIE, token, max_age=sessions.SESSION_DAYS * 24 * 60 * 60)
-    st.rerun()
 
 
 def _render_registration_form() -> None:
@@ -108,9 +119,9 @@ def render_logout_button() -> None:
 
 
 def sign_out() -> None:
-    token = _cookies().get(AUTH_COOKIE)
+    token = _get_cookie(AUTH_COOKIE)
     if token:
-        sessions.delete(_token_hash(str(token)))
+        sessions.delete(_token_hash(token))
         _cookies().remove(AUTH_COOKIE)
     st.session_state.pop("auth_user", None)
     st.rerun()

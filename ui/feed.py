@@ -1,5 +1,6 @@
 """Home feed: header, note composer, feed cards, and note dialogs."""
 
+import base64
 from collections.abc import Callable
 from datetime import datetime
 from html import escape
@@ -33,6 +34,28 @@ FEELINGS = [
     "I want you to know you matter",
 ]
 
+FOLLOW_UP_QUESTIONS = {
+    "I miss you": "What do you miss most about Mooo?",
+    "I love you": "What makes you love Mooo today?",
+    "I am grateful for you": "What are you most grateful to Mooo for?",
+    "I am proud of you": "What has Mooo done that makes you proud?",
+    "I cannot wait to see you": "What would you love to do when you see Mooo?",
+    "I am thinking about you": "What made you think about Mooo today?",
+    "I feel close to you": "What made you feel close to Mooo?",
+    "I am happy because of you": "How did Mooo make you happy?",
+    "I feel peaceful with you": "What about Mooo brings you peace?",
+    "I am excited to see you": "What are you most excited to share with Mooo?",
+    "I am feeling extra romantic": "What romantic thought would you like to share?",
+    "I want to make you smile": "What would you like to say to make Mooo smile?",
+    "I miss your voice": "What do you miss about Mooo's voice?",
+    "I miss your hugs": "What do Mooo's hugs make you feel?",
+    "I miss your laugh": "What do you love about Mooo's laugh?",
+    "I am thankful for our memories": "Which memory with Mooo are you thankful for?",
+    "I am sorry and thinking of you": "What would you like Mooo to know?",
+    "I need a little closeness": "What would help you feel closer to Mooo?",
+    "I want you to know you matter": "Why does Mooo matter to you?",
+}
+
 
 def render_header() -> None:
     st.markdown('<div class="eyebrow"><span class="heart">♥</span> a little place for us</div>', unsafe_allow_html=True)
@@ -59,7 +82,7 @@ def render_header() -> None:
     st.markdown('<div class="cupid-stage" aria-hidden="true"><span class="cupid">♥</span></div>', unsafe_allow_html=True)
 
 
-def render_composer() -> None:
+def render_composer(user: dict) -> None:
     toggle_col, _ = st.columns([1, 5])
     with toggle_col:
         if st.button("♥", help="Add a note", key="open_note", use_container_width=True):
@@ -67,7 +90,7 @@ def render_composer() -> None:
     if not st.session_state.show_composer:
         return
 
-    with st.form("love_note"):
+    with st.container(border=True):
         st.markdown(
             f'<div class="eyebrow"><span class="heart">♥</span> a note for '
             f'<span class="partner-name">{escape(PARTNER_NAME)}</span></div>',
@@ -79,24 +102,26 @@ def render_composer() -> None:
             accept_new_options=True,
             placeholder="Choose or type your own feeling...",
         )
-        body = st.text_area(
-            "What did you miss about Mooo?",
-            placeholder="I missed your voice, your laugh, and the way you make an ordinary day feel lighter...",
-            height=170,
-        )
-        attachment = st.file_uploader(
-            "Add a memory (optional)", help="Images and videos are saved with your note."
-        )
-        st.markdown('<div class="primary">', unsafe_allow_html=True)
-        submitted = st.form_submit_button("Make it beautiful", use_container_width=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+        follow_up = FOLLOW_UP_QUESTIONS.get(feeling, "What would you like to tell Mooo about this feeling?")
+        with st.form("love_note", border=False):
+            body = st.text_area(
+                follow_up,
+                placeholder="Write what is in your heart...",
+                height=170,
+            )
+            attachment = st.file_uploader(
+                "Add a memory (optional)", help="Images and videos are saved with your note."
+            )
+            st.markdown('<div class="primary">', unsafe_allow_html=True)
+            submitted = st.form_submit_button("Make it beautiful", use_container_width=True)
+            st.markdown("</div>", unsafe_allow_html=True)
 
     if not submitted:
         return
     if not body.strip():
         st.warning(f"Add a few words for {PARTNER_NAME} first.")
         return
-    note_id = notes.create_note(PARTNER_NAME, feeling, body.strip())
+    note_id = notes.create_note(PARTNER_NAME, feeling, body.strip(), user["username"])
     if attachment:
         notes.attach_media(note_id, attachment.name, attachment.type, attachment.getvalue())
     st.session_state.show_composer = False
@@ -246,13 +271,19 @@ def _note_dialog(note_id: int) -> None:
         st.info("This note is no longer available.")
         return
 
+    st.caption(note["feeling"])
     image = notes.first_image(note_id)
     if image and image["path"].exists():
-        st.image(cached_media(image["path"]), width="stretch")
+        _render_image_note(image["path"], note)
     for video_path in notes.list_note_videos(note_id):
         st.video(video_path, width="stretch")
-    st.caption(note["feeling"])
-    st.markdown(f'<div class="letter-body">{escape(note["body"])}</div>', unsafe_allow_html=True)
+    if image is None:
+        author = note.get("author_username") or "Mooo"
+        st.markdown(
+            f'<div class="letter-body">{escape(note["body"])}</div>'
+            f'<div class="note-signature">- {escape(author)}</div>',
+            unsafe_allow_html=True,
+        )
 
     if _render_reply_form(note_id, "dialog"):
         st.rerun(scope="fragment")
@@ -263,6 +294,22 @@ def _note_dialog(note_id: int) -> None:
     if st.button("Delete note and media", key=f"dialog_delete_note_{note_id}"):
         notes.delete_note(note_id)
         st.rerun()
+
+
+def _render_image_note(path, note: dict) -> None:
+    content = base64.b64encode(cached_media(path)).decode("ascii")
+    suffix = path.suffix.lower()
+    media_type = "image/jpeg" if suffix in {".jpg", ".jpeg"} else f"image/{suffix.lstrip('.')}"
+    author = note.get("author_username") or "Mooo"
+    st.markdown(
+        '<div class="open-note-image">'
+        f'<img src="data:{media_type};base64,{content}" alt="A memory with Mooo">'
+        '<div class="open-note-overlay">'
+        f'<div class="open-note-message">{escape(note["body"])}</div>'
+        f'<div class="open-note-author">- {escape(author)}</div>'
+        "</div></div>",
+        unsafe_allow_html=True,
+    )
 
 
 def _delete_reply_in_dialog(reply_id: int) -> None:

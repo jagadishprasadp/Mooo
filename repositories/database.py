@@ -144,11 +144,14 @@ def _ensure_schema(backend: str, connection: Any) -> None:
 
 
 def _add_legacy_sqlite_columns(cursor: sqlite3.Cursor) -> None:
-    # Local databases created before duplicate detection lack this column.
-    try:
-        cursor.execute("alter table memories add column content_hash text")
-    except sqlite3.OperationalError:
-        pass
+    for statement in (
+        "alter table memories add column content_hash text",
+        "alter table notes add column author_username text",
+    ):
+        try:
+            cursor.execute(statement)
+        except sqlite3.OperationalError:
+            pass
 
 
 def _is_alive(connection: Any) -> bool:

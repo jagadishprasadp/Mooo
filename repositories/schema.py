@@ -18,11 +18,20 @@ def sqlite_schema() -> list[str]:
         )
         """,
         """
+        create table if not exists love_reminders (
+            id integer primary key autoincrement,
+            user_id integer not null,
+            remembered_at text not null,
+            foreign key (user_id) references users (id)
+        )
+        """,
+        """
         create table if not exists notes (
             id integer primary key autoincrement,
             partner text not null,
             feeling text not null,
             body text not null,
+            author_username text,
             created_at text not null
         )
         """,
@@ -78,14 +87,28 @@ def azure_sql_schema() -> list[str]:
             )
         """,
         """
+        if object_id('dbo.love_reminders', 'U') is null
+            create table dbo.love_reminders (
+                id int identity(1,1) primary key,
+                user_id int not null,
+                remembered_at datetime2 not null,
+                constraint fk_love_reminders_users foreign key (user_id) references dbo.users(id)
+            )
+        """,
+        """
         if object_id('dbo.notes', 'U') is null
             create table dbo.notes (
                 id int identity(1,1) primary key,
                 partner nvarchar(255) not null,
                 feeling nvarchar(255) not null,
                 body nvarchar(max) not null,
+                author_username nvarchar(255) null,
                 created_at datetime2 not null
             )
+        """,
+        """
+        if col_length('dbo.notes', 'author_username') is null
+            alter table dbo.notes add author_username nvarchar(255) null
         """,
         """
         if object_id('dbo.replies', 'U') is null

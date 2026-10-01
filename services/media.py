@@ -1,5 +1,6 @@
 """Media files: a local disk cache backed by Azure Blob Storage, plus image thumbnails."""
 
+import base64
 import uuid
 from io import BytesIO
 from pathlib import Path
@@ -12,6 +13,7 @@ from services import azure_storage
 THUMBNAIL_PREFIX = "thumb-"
 THUMBNAIL_SIZE = (640, 640)
 THUMBNAIL_QUALITY = 78
+BACKGROUND_FILE = "memories-background.jpg"
 
 
 def is_image(media_type: str) -> bool:
@@ -78,6 +80,33 @@ def delete(file_name: str) -> None:
     for name in names:
         local_path(name).unlink(missing_ok=True)
     azure_storage.delete_blobs_in_background(names)
+
+
+def store_background(content: bytes) -> None:
+    with Image.open(BytesIO(content)) as image:
+        image.thumbnail((2400, 1600))
+        output = BytesIO()
+        image.convert("RGB").save(output, format="JPEG", quality=88, optimize=True)
+    background = output.getvalue()
+    _write_local(BACKGROUND_FILE, background)
+    azure_storage.upload_blob(BACKGROUND_FILE, background, "image/jpeg", overwrite=True)
+
+
+def background_data_uri() -> str | None:
+    path = local_path(BACKGROUND_FILE)
+    if not path.exists():
+        content = azure_storage.download_blob(BACKGROUND_FILE)
+        if content is None:
+            return None
+        _write_local(BACKGROUND_FILE, content)
+    encoded = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:image/jpeg;base64,{encoded}"
+
+
+def remove_background() -> None:
+    path = local_path(BACKGROUND_FILE)
+    path.unlink(missing_ok=True)
+    azure_storage.delete_blobs_in_background([BACKGROUND_FILE])
 
 
 def create_thumbnail(content: bytes) -> bytes | None:

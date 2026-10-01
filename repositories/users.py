@@ -53,6 +53,12 @@ def list_users() -> list[dict]:
     ]
 
 
+def update_password(user_id: int, password_hash: str) -> bool:
+    with transaction() as session:
+        session.execute("update users set password_hash = ? where id = ?", (password_hash, user_id))
+        return session.fetch_value("select count(*) from users where id = ?", (user_id,)) == 1
+
+
 def promote_first_user_if_no_admin() -> None:
     with transaction() as session:
         admin_count = session.fetch_value("select count(*) from users where role = ?", (ADMIN_ROLE,))

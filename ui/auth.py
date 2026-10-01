@@ -1,13 +1,37 @@
 """Sign-in, registration, sidebar, and the admin panel."""
 
-import streamlit as st
+import hashlib
+import secrets
 
+import streamlit as st
+from streamlit_cookies_controller import CookieController
+
+from repositories import sessions
 from services import accounts
+from services import media
+
+AUTH_COOKIE = "mooo_auth"
+
+
+def _cookies() -> CookieController:
+    return CookieController()
+
+
+def _token_hash(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()
 
 
 def current_user() -> dict | None:
     """Return the signed-in user, refreshed from the database so role changes apply."""
     stored = st.session_state.get("auth_user")
+    if not stored:
+        token = _cookies().get(AUTH_COOKIE)
+        if token:
+            user_id = sessions.find_user_id(str(token))
+            if user_id is not None:
+                stored = accounts.get_user(user_id)
+                if stored:
+                    st.session_state.auth_user = stored
     if not stored:
         return None
     user = accounts.get_user(stored["id"])
@@ -41,6 +65,9 @@ def _render_sign_in_form() -> None:
         st.error("That username or password is not correct.")
         return
     st.session_state.auth_user = user
+    token = secrets.token_urlsafe(32)
+    sessions.create(user["id"], _token_hash(token))
+    _cookies().set(AUTH_COOKIE, token, max_age=sessions.SESSION_DAYS * 24 * 60 * 60)
     st.rerun()
 
 
@@ -69,8 +96,24 @@ def render_sidebar(user: dict) -> None:
         if accounts.is_admin(user):
             st.caption("Administrator")
         if st.button("Sign out", use_container_width=True):
-            st.session_state.pop("auth_user", None)
-            st.rerun()
+            sign_out()
+
+
+def render_logout_button() -> None:
+    st.markdown('<div class="logout-action">', unsafe_allow_html=True)
+    signed_out = st.button("Sign out  ♥", key="main_sign_out", help="Sign out of this account")
+    st.markdown("</div>", unsafe_allow_html=True)
+    if signed_out:
+        sign_out()
+
+
+def sign_out() -> None:
+    token = _cookies().get(AUTH_COOKIE)
+    if token:
+        sessions.delete(_token_hash(str(token)))
+    _cookies().remove(AUTH_COOKIE)
+    st.session_state.pop("auth_user", None)
+    st.rerun()
 
 
 def render_admin_button(user: dict) -> None:
@@ -85,6 +128,49 @@ def render_admin_button(user: dict) -> None:
 @st.dialog("Admin panel", width="large")
 def _admin_panel(admin: dict) -> None:
     st.caption(f"Signed in as {admin['username']}")
+    st.subheader("Memories background")
+    with st.form("memory_background_form"):
+        background = st.file_uploader(
+            "Upload a background image",
+            type=["png", "jpg", "jpeg", "webp"],
+        )
+        save_background = st.form_submit_button("Save background", type="primary")
+    if save_background:
+        if background is None:
+            st.warning("Choose an image first.")
+        else:
+            try:
+                media.store_background(background.getvalue())
+            except (OSError, ValueError):
+                st.error("That image could not be saved. Please choose another image.")
+            else:
+                st.success("Memories background updated.")
+    if st.button("Remove custom background", key="remove_memory_background"):
+        media.remove_background()
+        st.success("The built-in love background is restored.")
+
+    st.subheader("Reset a user password")
+    resettable_users = [user for user in accounts.list_users() if user["id"] != admin["id"]]
+    if resettable_users:
+        user_by_label = {user["username"]: user for user in resettable_users}
+        with st.form("reset_user_password_form"):
+            selected_username = st.selectbox("User", list(user_by_label))
+            new_password = st.text_input("New password", type="password")
+            confirm_password = st.text_input("Confirm new password", type="password")
+            reset_password = st.form_submit_button("Reset password", type="primary")
+        if reset_password:
+            error = accounts.reset_password(
+                user_by_label[selected_username]["id"],
+                new_password,
+                confirm_password,
+            )
+            if error:
+                st.error(error)
+            else:
+                st.success(f"Password reset for {selected_username}.")
+    else:
+        st.caption("There are no other users to reset.")
+
     st.write("Registered users")
     for registered_user in accounts.list_users():
         user_col, role_col, action_col = st.columns([4, 2, 1])

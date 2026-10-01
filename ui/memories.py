@@ -16,6 +16,35 @@ def open_memories() -> None:
 
 
 def render_memories_page() -> None:
+    st.markdown(
+        """
+        <style>
+        [data-testid="stAppViewContainer"] {
+            background-color: #fff1f3;
+            background-image:
+                linear-gradient(rgba(255, 247, 246, .78), rgba(255, 232, 235, .84)),
+                url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 800'%3E%3Cdefs%3E%3CradialGradient id='g' cx='50%25' cy='35%25'%3E%3Cstop offset='0' stop-color='%23fffdfb'/%3E%3Cstop offset='1' stop-color='%23f7cbd2'/%3E%3C/radialGradient%3E%3C/defs%3E%3Crect width='1200' height='800' fill='url(%23g)'/%3E%3Cg fill='%23d96b7b' opacity='.28'%3E%3Cpath d='M160 170c-32-48-104 2 0 80 104-78 32-128 0-80z'/%3E%3Cpath d='M970 180c-32-48-104 2 0 80 104-78 32-128 0-80z'/%3E%3Cpath d='M600 530c-32-48-104 2 0 80 104-78 32-128 0-80z'/%3E%3C/g%3E%3Cg fill='none' stroke='%23d96b7b' stroke-width='3' opacity='.2'%3E%3Ccircle cx='600' cy='360' r='190'/%3E%3Ccircle cx='600' cy='360' r='250'/%3E%3C/g%3E%3C/svg%3E");
+            background-position: center;
+            background-size: cover;
+            background-attachment: fixed;
+        }
+        [data-testid="stAppViewContainer"] > .main { background: transparent; }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    background_uri = media.background_data_uri()
+    if background_uri:
+        st.markdown(
+            f"""
+            <style>
+            [data-testid="stAppViewContainer"] {{
+                background-image: linear-gradient(rgba(255, 247, 246, .72), rgba(255, 232, 235, .78)), url("{background_uri}");
+            }}
+            </style>
+            """,
+            unsafe_allow_html=True,
+        )
     if st.button("♥ Back to feed", key="back_from_memories_top"):
         st.session_state.show_memories = False
         st.rerun()

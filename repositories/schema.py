@@ -10,6 +10,14 @@ def sqlite_schema() -> list[str]:
         )
         """,
         """
+        create table if not exists auth_sessions (
+            token_hash text primary key,
+            user_id integer not null,
+            expires_at text not null,
+            foreign key (user_id) references users (id)
+        )
+        """,
+        """
         create table if not exists notes (
             id integer primary key autoincrement,
             partner text not null,
@@ -58,6 +66,15 @@ def azure_sql_schema() -> list[str]:
                 password_hash nvarchar(255) not null,
                 role nvarchar(50) not null default 'user',
                 created_at datetime2 not null
+            )
+        """,
+        """
+        if object_id('dbo.auth_sessions', 'U') is null
+            create table dbo.auth_sessions (
+                token_hash nvarchar(128) primary key,
+                user_id int not null,
+                expires_at datetime2 not null,
+                constraint fk_auth_sessions_users foreign key (user_id) references dbo.users(id)
             )
         """,
         """

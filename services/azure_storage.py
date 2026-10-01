@@ -43,14 +43,14 @@ def is_configured() -> bool:
     return get_azure_storage_settings() is not None
 
 
-def upload_blob(blob_name: str, content: bytes, media_type: str) -> None:
+def upload_blob(blob_name: str, content: bytes, media_type: str, overwrite: bool = False) -> None:
     container = _container_client()
     if container is None:
         return
     container.upload_blob(
         blob_name,
         content,
-        overwrite=False,
+        overwrite=overwrite,
         content_settings=ContentSettings(content_type=media_type),
     )
 

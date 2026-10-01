@@ -27,6 +27,7 @@ def _render_app() -> None:
 
     init_session_state()
     auth.render_sidebar(user)
+    auth.render_logout_button()
     auth.render_admin_button(user)
     feed.render_header()
 

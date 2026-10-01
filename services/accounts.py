@@ -59,6 +59,16 @@ def list_users() -> list[dict]:
     return users.list_users()
 
 
+def reset_password(user_id: int, password: str, confirm_password: str) -> str | None:
+    if len(password) < MIN_PASSWORD_LENGTH:
+        return f"Password must be at least {MIN_PASSWORD_LENGTH} characters."
+    if password != confirm_password:
+        return "The passwords do not match."
+    if not users.update_password(user_id, hash_password(password)):
+        return "That user no longer exists."
+    return None
+
+
 def is_admin(user: dict) -> bool:
     return str(user.get("role", "")).strip().lower() == users.ADMIN_ROLE
 

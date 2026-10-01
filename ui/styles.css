@@ -1,5 +1,5 @@
 :root { --ink:#24201f; --rose:#b84f5c; --line:#eadbd5; --muted:#887b76; }
-.stApp { background:linear-gradient(135deg,#fffaf7 0%,#fff3ee 48%,#f8e6e4 100%); color:var(--ink); }
+.stApp { background:linear-gradient(135deg,#fffaf7 0%,#fff3ee 48%,#f8e6e4 100%); color:var(--ink); animation:page-enter .7s ease-out both; }
 .block-container { max-width:760px; padding:2.5rem 1.2rem 4rem; }
 h1,h2,h3 { font-family:Georgia,serif; }
 p,div,label,input,textarea,button { font-family:Arial,sans-serif; }
@@ -28,14 +28,17 @@ h1 { font-size:clamp(3rem,10vw,6.8rem); line-height:.91; margin:.5rem 0 1.2rem; 
 .feed-love-birds span:nth-child(2) { animation-delay:-.7s; font-size:.7rem; }
 
 /* Memories */
-.memories-button button { min-height:4rem; border:0; border-radius:999px; background:#d33145; color:#fff; font-size:1.05rem !important; line-height:1; box-shadow:0 10px 24px rgba(211,49,69,.22); padding:.7rem 1.1rem; }
+.memories-button button { min-height:4rem; border:0; border-radius:999px; background:#d33145; color:#fff; font-size:1.05rem !important; line-height:1; box-shadow:0 10px 24px rgba(211,49,69,.22); padding:.7rem 1.1rem; animation:button-arrive .65s .25s ease-out both; }
 .memories-button button:hover { border:0; background:#b9273a; color:#fff; transform:scale(1.05); }
 .memory-title { color:var(--rose); font-family:Georgia,serif; font-size:2.4rem; text-align:center; margin:1rem 0 2rem; }
 .memory-uploader [data-testid="stFileUploaderDropzoneInstructions"] { display:none; }
 .memory-uploader [data-testid="stFileUploaderDropzone"] { padding:.55rem; background:transparent; border:0; }
 
 /* Notes and feed */
-.letter,.feed-item { background:rgba(255,255,255,.74); border:1px solid var(--line); border-radius:20px; padding:1.1rem; box-shadow:0 12px 35px rgba(111,54,47,.06); }
+.letter,.feed-item { background:rgba(255,255,255,.74); border:1px solid var(--line); border-radius:20px; padding:1.1rem; box-shadow:0 12px 35px rgba(111,54,47,.06); animation:card-arrive .55s ease-out both; }
+.feed-item:nth-of-type(2) { animation-delay:.08s; }
+.feed-item:nth-of-type(3) { animation-delay:.16s; }
+.feed-item:nth-of-type(4) { animation-delay:.24s; }
 .letter-line { color:var(--muted); font-size:.8rem; margin-bottom:1rem; }
 .letter-body,.feed-body { white-space:pre-wrap; font-family:Georgia,serif; line-height:1.55; }
 .note-signature { color:var(--rose); font-family:Georgia,serif; font-size:1.05rem; font-style:italic; text-align:right; margin-top:1rem; }
@@ -69,9 +72,20 @@ h1 { font-size:clamp(3rem,10vw,6.8rem); line-height:.91; margin:.5rem 0 1.2rem; 
 /* Buttons */
 .stButton button { border:1px solid var(--line); border-radius:13px; background:#fff; color:var(--ink); min-height:2.7rem; }
 .primary button { background:var(--rose); color:#fff; }
+.primary button:hover { transform:translateY(-1px); box-shadow:0 8px 18px rgba(184,79,92,.2); }
+.logout-action { display:flex; justify-content:flex-end; margin:-1.4rem 0 1.2rem; }
+.logout-action + div button { min-height:2.25rem; border:1px solid #e9b8c0; border-radius:999px; background:rgba(255,255,255,.58); color:var(--rose); font-size:.78rem; padding:.25rem .85rem; box-shadow:0 5px 14px rgba(184,79,92,.08); transition:transform .18s, background .18s, box-shadow .18s; }
+.logout-action + div button:hover { border-color:var(--rose); background:#fff4f5; color:#9e3f4d; transform:translateY(-1px); box-shadow:0 8px 18px rgba(184,79,92,.16); }
 
+@keyframes page-enter { from { opacity:0; } to { opacity:1; } }
+@keyframes button-arrive { from { opacity:0; transform:translateY(8px) scale(.96); } to { opacity:1; transform:none; } }
+@keyframes card-arrive { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:none; } }
 @keyframes fly-across { from { left:-54px; } to { left:calc(100% + 54px); } }
 @keyframes float-heart { from { transform:translateY(0); opacity:0; } to { transform:translateY(-82px); opacity:0; } }
 @keyframes love-reaction-out { 0%,70% { opacity:1; max-height:120px; } 100% { opacity:0; max-height:0; } }
 @keyframes feed-bird-float { 0%,100% { transform:translateY(2px) rotate(-8deg); } 50% { transform:translateY(-3px) rotate(8deg); } }
 @keyframes reply-pop { from { opacity:0; transform:translateY(6px) scale(.98); } to { opacity:1; transform:none; } }
+
+@media (prefers-reduced-motion: reduce) {
+	*, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; }
+}

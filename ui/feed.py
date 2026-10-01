@@ -74,7 +74,12 @@ def render_composer() -> None:
             f'<span class="partner-name">{escape(PARTNER_NAME)}</span></div>',
             unsafe_allow_html=True,
         )
-        feeling = st.selectbox("What are you feeling today?", FEELINGS)
+        feeling = st.selectbox(
+            "What are you feeling today?",
+            FEELINGS,
+            accept_new_options=True,
+            placeholder="Choose or type your own feeling...",
+        )
         body = st.text_area(
             "What did you miss about Mooo?",
             placeholder="I missed your voice, your laugh, and the way you make an ordinary day feel lighter...",

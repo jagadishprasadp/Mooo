@@ -111,7 +111,7 @@ def sign_out() -> None:
     token = _cookies().get(AUTH_COOKIE)
     if token:
         sessions.delete(_token_hash(str(token)))
-    _cookies().remove(AUTH_COOKIE)
+        _cookies().remove(AUTH_COOKIE)
     st.session_state.pop("auth_user", None)
     st.rerun()
 

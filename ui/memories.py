@@ -1,11 +1,12 @@
 """Memory gallery page."""
 
+import base64
+
 import streamlit as st
 
 from services import media, memories
 from ui.common import cached_media, current_page, page_slice, render_pagination
 
-UPLOAD_TYPES = ["png", "jpg", "jpeg", "webp", "mp4", "mov", "webm"]
 CACHE_KEY = "memories_cache"
 CLEAR_SELECTION_KEY = "clear_memory_selection"
 
@@ -68,7 +69,6 @@ def _render_uploader() -> None:
     st.markdown('<div class="memory-uploader">', unsafe_allow_html=True)
     uploads = st.file_uploader(
         "♥ Add memory",
-        type=UPLOAD_TYPES,
         accept_multiple_files=True,
         key=f"memory_gallery_upload_{st.session_state.memory_upload_version}",
         label_visibility="collapsed",
@@ -121,11 +121,24 @@ def _render_gallery() -> None:
         with columns[index % 2]:
             st.checkbox("Select", key=f"select_memory_{item['id']}", label_visibility="collapsed")
             if media.is_video(item["media_type"]):
+                st.markdown('<div class="memory-media-frame memory-video-frame">', unsafe_allow_html=True)
                 st.video(item["path"])
+                st.markdown("</div>", unsafe_allow_html=True)
             else:
-                st.image(cached_media(item["path"]), caption="A moment with Mooo", width="stretch")
+                _render_memory_image(item["path"])
 
     render_pagination("memories_page", page, total_pages, scope="fragment")
+
+
+def _render_memory_image(path) -> None:
+    content = base64.b64encode(cached_media(path)).decode("ascii")
+    media_type = "image/jpeg" if path.suffix.lower() in {".jpg", ".jpeg"} else f"image/{path.suffix.lstrip('.')}"
+    st.markdown(
+        f'<div class="memory-media-frame"><img src="data:{media_type};base64,{content}" '
+        "alt=\"A moment with Mooo\" style=\"object-fit:contain;\"></div>",
+        unsafe_allow_html=True,
+    )
+    st.caption("A moment with Mooo")
 
 
 @st.dialog("Delete memories?")

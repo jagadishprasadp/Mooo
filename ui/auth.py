@@ -132,7 +132,6 @@ def _admin_panel(admin: dict) -> None:
     with st.form("memory_background_form"):
         background = st.file_uploader(
             "Upload a background image",
-            type=["png", "jpg", "jpeg", "webp"],
         )
         save_background = st.form_submit_button("Save background", type="primary")
     if save_background:

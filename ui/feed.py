@@ -11,7 +11,6 @@ from ui.common import cached_media, current_page, page_slice, render_pagination
 from ui.memories import open_memories
 
 PARTNER_NAME = " My Mooo"
-UPLOAD_TYPES = ["png", "jpg", "jpeg", "webp", "mp4", "mov", "webm"]
 FEELINGS = [
     "I miss you",
     "I love you",
@@ -47,7 +46,7 @@ def render_header() -> None:
     _, memories_col = st.columns([3, 1])
     with memories_col:
         st.markdown('<div class="memories-button">', unsafe_allow_html=True)
-        if st.button("♥ Open our memory", key="open_memories"):
+        if st.button("♥", key="open_memories", help="Open our memories"):
             open_memories()
             st.rerun()
         st.markdown("</div>", unsafe_allow_html=True)
@@ -86,7 +85,7 @@ def render_composer() -> None:
             height=170,
         )
         attachment = st.file_uploader(
-            "Add a memory (optional)", type=UPLOAD_TYPES, help="Images and videos are saved with your note."
+            "Add a memory (optional)", help="Images and videos are saved with your note."
         )
         st.markdown('<div class="primary">', unsafe_allow_html=True)
         submitted = st.form_submit_button("Make it beautiful", use_container_width=True)
@@ -121,28 +120,30 @@ def render_footer() -> None:
 
 
 def _render_feed_item(note: dict) -> None:
-    image = notes.first_image(note["id"], include_original=False)
-    thumbnail = image["thumbnail_path"] if image else None
-    has_thumbnail = thumbnail is not None and thumbnail.exists()
-    if has_thumbnail:
-        st.image(cached_media(thumbnail), width="stretch")
-        if st.button("Open note", key=f"open_note_{note['id']}", use_container_width=True):
-            _note_dialog(note["id"])
-    else:
-        _render_text_card(note)
+    with st.container(key=f"feed-post-{note['id']}"):
+        image = notes.first_image(note["id"], include_original=False)
+        video = notes.first_video(note["id"])
+        thumbnail = image["thumbnail_path"] if image else video["thumbnail_path"] if video else None
+        has_thumbnail = thumbnail is not None and thumbnail.exists()
+        if has_thumbnail:
+            with st.container(key=f"feed-image-frame-{note['id']}"):
+                st.image(cached_media(thumbnail), width="stretch")
+            if st.button("♥", key=f"open_note_{note['id']}", help="Open note", use_container_width=True):
+                _note_dialog(note["id"])
+        else:
+            _render_text_card(note)
 
-    _render_love_blast(note["id"])
-    for video_path in notes.list_note_videos(note["id"]):
-        st.video(video_path, width="stretch")
-    st.markdown('<div class="feed-love-birds" aria-hidden="true"><span>♥</span><span>♥</span></div>', unsafe_allow_html=True)
+        _render_love_blast(note["id"])
+        st.markdown('<div class="feed-love-birds" aria-hidden="true"><span>♥</span><span>♥</span></div>', unsafe_allow_html=True)
 
-    if has_thumbnail:
-        return
-    if st.session_state.comment_note == note["id"] and _render_reply_form(note["id"], "feed"):
-        st.session_state.love_blast_note = note["id"]
-        st.rerun()
-    if st.session_state.show_replies == note["id"]:
-        _render_reply_thread(note["id"], "feed", _confirm_reply_delete)
+        if has_thumbnail:
+            return
+        _render_note_actions(note["id"])
+        if st.session_state.comment_note == note["id"] and _render_reply_form(note["id"], "feed"):
+            st.session_state.love_blast_note = note["id"]
+            st.rerun()
+        if st.session_state.show_replies == note["id"]:
+            _render_reply_thread(note["id"], "feed", _confirm_reply_delete)
 
 
 def _render_text_card(note: dict) -> None:
@@ -151,18 +152,21 @@ def _render_text_card(note: dict) -> None:
         f'<div class="feed-body">{escape(note["body"])}</div><div class="note-signature">J ♥</div></div>',
         unsafe_allow_html=True,
     )
+ 
+
+def _render_note_actions(note_id: int) -> None:
     _, reply_col, replies_col, delete_col, _ = st.columns([1, 1, 1, 1, 2])
     with reply_col:
-        if st.button("💬", key=f"comment_text_{note['id']}", help="Reply to this note"):
-            st.session_state.comment_note = _toggle(st.session_state.comment_note, note["id"])
+        if st.button("💬", key=f"comment_text_{note_id}", help="Reply to this note"):
+            st.session_state.comment_note = _toggle(st.session_state.comment_note, note_id)
             st.rerun()
     with replies_col:
-        if st.button("🗨", key=f"show_text_replies_{note['id']}", help="Show all replies"):
-            st.session_state.show_replies = _toggle(st.session_state.show_replies, note["id"])
+        if st.button("🗨", key=f"show_text_replies_{note_id}", help="Show all replies"):
+            st.session_state.show_replies = _toggle(st.session_state.show_replies, note_id)
             st.rerun()
     with delete_col:
-        if st.button("🗑", key=f"delete_saved_text_{note['id']}", help="Delete this note"):
-            _confirm_note_delete(note["id"])
+        if st.button("🗑", key=f"delete_saved_text_{note_id}", help="Delete this note"):
+            _confirm_note_delete(note_id)
 
 
 def _render_reply_form(note_id: int, key: str) -> bool:
@@ -245,6 +249,8 @@ def _note_dialog(note_id: int) -> None:
     image = notes.first_image(note_id)
     if image and image["path"].exists():
         st.image(cached_media(image["path"]), width="stretch")
+    for video_path in notes.list_note_videos(note_id):
+        st.video(video_path, width="stretch")
     st.caption(note["feeling"])
     st.markdown(f'<div class="letter-body">{escape(note["body"])}</div>', unsafe_allow_html=True)
 

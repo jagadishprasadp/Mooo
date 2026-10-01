@@ -33,6 +33,13 @@ h1 { font-size:clamp(3rem,10vw,6.8rem); line-height:.91; margin:.5rem 0 1.2rem; 
 .memory-title { color:var(--rose); font-family:Georgia,serif; font-size:2.4rem; text-align:center; margin:1rem 0 2rem; }
 .memory-uploader [data-testid="stFileUploaderDropzoneInstructions"] { display:none; }
 .memory-uploader [data-testid="stFileUploaderDropzone"] { padding:.55rem; background:transparent; border:0; }
+.memory-media-frame { width:100%; aspect-ratio:4 / 3; overflow:hidden; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.64); box-shadow:0 8px 22px rgba(111,54,47,.08); }
+.memory-media-frame img { display:block; width:100%; height:100%; object-position:center; }
+.memory-video-frame video { width:100%; height:100%; object-fit:cover; }
+.memory-video-frame [data-testid="stVideo"] { height:100%; }
+.feed-image-frame, .feed-video-frame { width:100%; aspect-ratio:4 / 3; overflow:hidden; border:1px solid var(--line); border-radius:16px; background:rgba(255,255,255,.64); box-shadow:0 8px 22px rgba(111,54,47,.08); }
+.feed-image-frame img { width:100%; height:100%; object-fit:contain; }
+.feed-video-frame [data-testid="stVideo"], .feed-video-frame video { width:100%; height:100%; object-fit:contain; }
 
 /* Notes and feed */
 .letter,.feed-item { background:rgba(255,255,255,.74); border:1px solid var(--line); border-radius:20px; padding:1.1rem; box-shadow:0 12px 35px rgba(111,54,47,.06); animation:card-arrive .55s ease-out both; }

@@ -50,6 +50,20 @@ def first_image(note_id: int, include_original: bool = True) -> dict | None:
     return None
 
 
+def first_video(note_id: int, include_original: bool = False) -> dict | None:
+    """Return the first video thumbnail without loading the video into the feed."""
+    for row in notes.list_note_media(note_id):
+        if not media.is_video(row["media_type"]):
+            continue
+        file_name = row["file_name"]
+        thumbnail_path = media.ensure_thumbnail(file_name)
+        if thumbnail_path is None:
+            continue
+        path = media.ensure_local(file_name) if include_original else media.local_path(file_name)
+        return {"path": path, "thumbnail_path": thumbnail_path}
+    return None
+
+
 def list_note_videos(note_id: int) -> list[Path]:
     """Return local paths of a note's videos, downloading only the videos."""
     paths = []

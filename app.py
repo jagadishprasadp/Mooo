@@ -29,12 +29,12 @@ def _render_app() -> None:
     auth.render_sidebar(user)
     auth.render_logout_button()
     auth.render_admin_button(user)
-    feed.render_header()
 
     if st.session_state.show_memories:
         render_memories_page()
         return
 
+    feed.render_header()
     feed.render_composer()
     feed.render_feed()
     feed.render_footer()

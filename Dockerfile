@@ -15,6 +15,7 @@ COPY app.py main.py storage.py ./
 COPY config ./config
 COPY repositories ./repositories
 COPY services ./services
+COPY ui ./ui
 
 EXPOSE 8501
 
